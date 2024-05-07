@@ -1,5 +1,6 @@
 use std::{sync::{Arc,mpsc::Receiver}, thread, time::Duration};
-use std::sync::Mutex;
+use std::sync::{mpsc, Mutex};
+use std::sync::mpsc::TryRecvError;
 use esp_idf_svc::{
     hal::{
         gpio::OutputPin,
@@ -113,7 +114,6 @@ impl SmartLock {
                     Err(_) => {}
                 }
                 if blink {
-                    thread::sleep(Duration::from_millis(500));
                     red_pin.set_duty(255).unwrap();
                     green_pin.set_duty(255).unwrap();
                     blue_pin.set_duty(255).unwrap();
@@ -122,6 +122,7 @@ impl SmartLock {
                 red_pin.set_duty(255 - color[0]).unwrap();
                 green_pin.set_duty(255 - color[1]).unwrap();
                 blue_pin.set_duty(255 - color[2]).unwrap();
+                thread::sleep(Duration::from_millis(500));
             }
         });
     }

@@ -1,5 +1,6 @@
 use std::{sync::mpsc::{self, Sender}, thread, time::Duration};
 use std::sync::{Arc, Mutex};
+use std::time::SystemTime;
 use esp_idf_svc::{
     mqtt::client::{
         EspMqttClient,
@@ -45,29 +46,23 @@ pub fn handle_communication(
     state_tx.send(State::CLOSED).unwrap();
 
     thread::spawn(move || {
-        loop {
-            // Handle the different commands from the MQTT event thread
-            match event_rx.try_recv() { // Receive data from channel
-                Ok(msg) => {
-                    match msg.as_str() {
-                        "open" => {
-                            state_tx.send(State::OPENING).unwrap();
-                            thread::sleep(Duration::from_millis(1000));
-                            state_tx.send(State::OPEN).unwrap();
-                        },
-                        "close" => {
-                            state_tx.send(State::CLOSING).unwrap();
-                            thread::sleep(Duration::from_millis(1000));
-                            state_tx.send(State::CLOSED).unwrap();
-                        },
-                        cmd => {
-                            error!("Unknown command {:?}", cmd);
-                            state_tx.send(State::ERROR).unwrap();
-                        }
-                    };
+        for msg in event_rx {
+            match msg.as_str() {
+                "open" => {
+                    state_tx.send(State::OPENING).unwrap();
+                    thread::sleep(Duration::from_millis(1000));
+                    state_tx.send(State::OPEN).unwrap();
                 },
-                Err(_) => continue,
-            }
+                "close" => {
+                    state_tx.send(State::CLOSING).unwrap();
+                    thread::sleep(Duration::from_millis(1000));
+                    state_tx.send(State::CLOSED).unwrap();
+                },
+                cmd => {
+                    error!("Unknown command {:?}", cmd);
+                    state_tx.send(State::ERROR).unwrap();
+                }
+            };
         }
     });
 
@@ -77,7 +72,10 @@ pub fn handle_communication(
             MQTT_RESPONSE_TOPIC,
             QoS::ExactlyOnce,
             false,
-            format!("SmartLock: {:?}", smart_lock.lock().unwrap().get_state()).as_bytes(),
+            format!("SmartLock: TODO, {:?}",
+                    //smart_lock.lock().unwrap().get_state(),
+                    SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap(),
+            ).as_bytes(),
         ).unwrap();
     }
 }
