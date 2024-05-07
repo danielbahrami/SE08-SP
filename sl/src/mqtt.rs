@@ -72,8 +72,8 @@ pub fn handle_communication(
             MQTT_RESPONSE_TOPIC,
             QoS::ExactlyOnce,
             false,
-            format!("SmartLock: TODO, {:?}",
-                    //smart_lock.lock().unwrap().get_state(),
+            format!("SmartLock: {:?}, {:?}",
+                    smart_lock.lock().unwrap().get_state(),
                     SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap(),
             ).as_bytes(),
         ).unwrap();
