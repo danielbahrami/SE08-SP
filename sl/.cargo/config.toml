@@ -19,5 +19,7 @@ WIFI_SSID = ""
 WIFI_PASSWORD = ""
 
 MQTT_BROKER = "mqtt://192.168.1.216:1883"
+MQTT_CLIENT_ID = "Lock-n-Roll"
 MQTT_COMMAND_TOPIC = "dk/sdu/mmmi/project/command"
-MQTT_RESPONSE_TOPIC = "dk/sdu/mmmi/project/response"
+MQTT_HEARTBEAT_TOPIC = "dk/sdu/mmmi/project/heartbeat"
+MQTT_HEARTBEAT_FREQUENCY_MS = "1000"
