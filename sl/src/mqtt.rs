@@ -12,7 +12,7 @@ use esp_idf_svc::{
     sys::EspError
 };
 use log::*;
-use crate::{MQTT_COMMAND_TOPIC, MQTT_RESPONSE_TOPIC};
+use crate::{MQTT_COMMAND_TOPIC, MQTT_HEARTBEAT_FREQUENCY_MS, MQTT_HEARTBEAT_TOPIC};
 use crate::lock::SmartLock;
 use crate::state::State;
 
@@ -45,6 +45,7 @@ pub fn handle_communication(
     // Signal that the INITIALIZATION is done and the device is ready to receive commands
     state_tx.send(State::CLOSED).unwrap();
 
+    // MQTT event thread
     thread::spawn(move || {
         for msg in event_rx {
             match msg.as_str() {
@@ -66,15 +67,18 @@ pub fn handle_communication(
         }
     });
 
+    // parse heartbeat frequency or use 1000ms as default
+    let heartbeat_freq = MQTT_HEARTBEAT_FREQUENCY_MS.parse::<u64>().unwrap_or_else(|_| 1000);
+    // Heartbeat loop
     loop {
-        thread::sleep(Duration::from_millis(1000));
+        thread::sleep(Duration::from_millis(heartbeat_freq));
         mqtt_client.publish(
-            MQTT_RESPONSE_TOPIC,
+            MQTT_HEARTBEAT_TOPIC,
             QoS::ExactlyOnce,
             false,
             format!("SmartLock: {:?}, {:?}",
                     smart_lock.lock().unwrap().get_state(),
-                    SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap(),
+                    SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis(),
             ).as_bytes(),
         ).unwrap();
     }

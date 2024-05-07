@@ -24,8 +24,9 @@ const WIFI_PASSWORD: &str = env!("WIFI_PASSWORD");
 // MQTT
 const MQTT_BROKER: &str = env!("MQTT_BROKER");
 const MQTT_COMMAND_TOPIC: &str = env!("MQTT_COMMAND_TOPIC");
-const MQTT_RESPONSE_TOPIC: &str = env!("MQTT_RESPONSE_TOPIC");
-const MQTT_CLIENT_ID: &str = "ESP32";
+const MQTT_HEARTBEAT_TOPIC: &str = env!("MQTT_HEARTBEAT_TOPIC");
+const MQTT_CLIENT_ID: &str = env!("MQTT_CLIENT_ID");
+const MQTT_HEARTBEAT_FREQUENCY_MS: &str = env!("MQTT_HEARTBEAT_FREQUENCY_MS");
 
 
 fn main() {
