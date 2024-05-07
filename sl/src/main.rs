@@ -3,34 +3,15 @@ mod wifi;
 mod mqtt;
 mod lock;
 
-use std::{
-    thread,
-    sync::mpsc,
-    time::{Duration, SystemTime}
-};
-use std::cmp::PartialEq;
-use std::sync::{Arc, Mutex};
-use std::sync::mpsc::{Receiver, RecvError, Sender};
+use std::sync::{Arc, mpsc, Mutex};
 use esp_idf_svc::{
-    eventloop::{EspEventLoop, System, EspSystemEventLoop},
-    hal::{
-        adc::{attenuation, AdcChannelDriver, AdcDriver, config::Config, ADC1},
-        peripherals::Peripherals, modem, peripheral::Peripheral, gpio::Gpio34
-    },
-    nvs::{EspDefaultNvsPartition, EspNvsPartition, NvsDefault},
-    wifi::{Configuration, EspWifi, ClientConfiguration, AuthMethod, BlockingWifi},
-    mqtt::client::{EspMqttClient, MqttClientConfiguration, EspMqttConnection, QoS,
-                   EventPayload::{Connected, Published, Received, Subscribed}
-    },
-    sys::EspError
+    eventloop::EspSystemEventLoop,
+    hal::peripherals::Peripherals,
+    nvs::EspDefaultNvsPartition,
 };
-use esp_idf_svc::hal::gpio::{OutputPin, Pin, PinDriver};
-use esp_idf_svc::hal::ledc::{config, LedcChannel, LedcDriver, LedcTimer, LedcTimerDriver};
-use esp_idf_svc::hal::ledc::config::TimerConfig;
-use esp_idf_svc::hal::prelude::FromValueType;
-use esp_idf_svc::sys::sleep;
 use log::*;
-use crate::state::{make_blue, make_green, make_orange, make_red, make_yellow, State};
+use crate::lock::SmartLock;
+use crate::state::State;
 
 // GREED = 32
 // RED = 33
@@ -55,15 +36,18 @@ fn main() {
     // Bind the log crate to the ESP Logging facilities
     esp_idf_svc::log::EspLogger::initialize_default();
 
-    let (mut state_tx, state_rx) = mpsc::channel::<State>();
+    let (state_tx, state_rx) = mpsc::channel::<State>();
 
     let peripherals = Peripherals::take().unwrap();
     let event_loop = EspSystemEventLoop::take().unwrap();
     let nvs = EspDefaultNvsPartition::take().unwrap();
 
+    let smart_lock = Arc::new(Mutex::new(SmartLock::new()));
+    let smart_lock_arc = smart_lock.clone();
+
     // Setup LEDs
     let (red_pin, green_pin, blue_pin) =
-        match setup_leds(
+        match SmartLock::setup_leds(
             peripherals.ledc.timer0,
             peripherals.ledc.channel0,
             peripherals.ledc.channel1,
@@ -79,8 +63,7 @@ fn main() {
         }
     };
 
-
-    lock::run_leds(state_rx, red_pin, green_pin, blue_pin);
+    SmartLock::run(smart_lock, state_rx, red_pin, green_pin, blue_pin);
 
     state_tx.send(State::INITIALIZING).unwrap();
 
@@ -90,6 +73,7 @@ fn main() {
         Ok(wifi) => wifi,
         Err(e) => {
             error!("Please check Wi-Fi ssid and password are correct\n{e}");
+            state_tx.send(State::ERROR).unwrap();
             return
         }
     };
@@ -100,41 +84,11 @@ fn main() {
         Ok(values) => values,
         Err(e) => {
             error!("Please check address to MQTT is correct\n{e}");
+            state_tx.send(State::ERROR).unwrap();
             return
         }
     };
 
     // Run and handle MQTT subscriptions and publications
-    mqtt::handle_mqtt(mqtt_client, mqtt_conn, &mut state_tx);
-}
-
-fn setup_leds(
-    timer0: impl Peripheral<P = impl LedcTimer> + 'static,
-    channel0: impl Peripheral<P = impl LedcChannel> + 'static,
-    channel1: impl Peripheral<P = impl LedcChannel> + 'static,
-    channel2: impl Peripheral<P = impl LedcChannel> + 'static,
-    pin25: impl Peripheral<P = impl OutputPin> + 'static,
-    pin32: impl Peripheral<P = impl OutputPin> + 'static,
-    pin33: impl Peripheral<P = impl OutputPin> + 'static
-) -> Result<(LedcDriver<'static>, LedcDriver<'static>, LedcDriver<'static>), EspError> {
-    let led_timer = Arc::new(LedcTimerDriver::new(
-        timer0,
-        &TimerConfig::default().frequency(25.kHz().into())
-    )?);
-    let red_pin = LedcDriver::new(
-        channel0,
-        led_timer.clone(),
-        pin25
-    )?;
-    let green_pin = LedcDriver::new(
-        channel1,
-        led_timer.clone(),
-        pin32
-    )?;
-    let blue_pin = LedcDriver::new(
-        channel2,
-        led_timer.clone(),
-        pin33
-    )?;
-    Ok((red_pin, green_pin, blue_pin))
+    mqtt::handle_communication(mqtt_client, mqtt_conn, state_tx, smart_lock_arc);
 }

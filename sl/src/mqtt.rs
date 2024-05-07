@@ -1,12 +1,18 @@
-use std::sync::mpsc;
-use std::sync::mpsc::Sender;
-use std::thread;
-use std::time::Duration;
-use esp_idf_svc::mqtt::client::{EspMqttClient, EspMqttConnection, MqttClientConfiguration, QoS};
-use esp_idf_svc::mqtt::client::EventPayload::{Connected, Published, Received, Subscribed};
-use esp_idf_svc::sys::EspError;
+use std::{sync::mpsc::{self, Sender}, thread, time::Duration};
+use std::sync::{Arc, Mutex};
+use esp_idf_svc::{
+    mqtt::client::{
+        EspMqttClient,
+        EspMqttConnection,
+        MqttClientConfiguration,
+        QoS,
+        EventPayload::{Connected, Published, Received, Subscribed}
+    },
+    sys::EspError
+};
 use log::*;
-use crate::MQTT_COMMAND_TOPIC;
+use crate::{MQTT_COMMAND_TOPIC, MQTT_RESPONSE_TOPIC};
+use crate::lock::SmartLock;
 use crate::state::State;
 
 pub fn setup_mqtt(broker_addr: &str, client_id: &str)
@@ -21,10 +27,11 @@ pub fn setup_mqtt(broker_addr: &str, client_id: &str)
     Ok((mqtt_client, mqtt_conn))
 }
 
-pub fn handle_mqtt(
+pub fn handle_communication(
     mut mqtt_client: EspMqttClient,
     mqtt_conn: EspMqttConnection,
-    state_tx: &mut Sender<State>
+    state_tx: Sender<State>,
+    smart_lock: Arc<Mutex<SmartLock>>,
 ) {
     // Channel for sending event commands out of the MQTT thread
     let (event_tx, event_rx) = mpsc::channel::<String>();
@@ -34,39 +41,45 @@ pub fn handle_mqtt(
 
     mqtt_client.subscribe(MQTT_COMMAND_TOPIC, QoS::ExactlyOnce).unwrap();
 
+    // Signal that the INITIALIZATION is done and the device is ready to receive commands
     state_tx.send(State::CLOSED).unwrap();
 
-    // Handle the different commands from the MQTT event thread
-    for msg in event_rx { // Receive data from channel
-        /*let cmd_arr = msg.split(":").collect::<Vec<&str>>();
-        if cmd_arr.len() <= 1 {
-            error!("Invalid command string {:?}", msg);
-            continue;
-        }*/
-        match msg.as_str() {
-            "open" => open_cmd(state_tx),
-            "close" => close_cmd(state_tx),
-            cmd => {
-                error!("Unknown command {:?}", cmd);
-                state_tx.send(State::ERROR).unwrap();
+    thread::spawn(move || {
+        loop {
+            // Handle the different commands from the MQTT event thread
+            match event_rx.try_recv() { // Receive data from channel
+                Ok(msg) => {
+                    match msg.as_str() {
+                        "open" => {
+                            state_tx.send(State::OPENING).unwrap();
+                            thread::sleep(Duration::from_millis(1000));
+                            state_tx.send(State::OPEN).unwrap();
+                        },
+                        "close" => {
+                            state_tx.send(State::CLOSING).unwrap();
+                            thread::sleep(Duration::from_millis(1000));
+                            state_tx.send(State::CLOSED).unwrap();
+                        },
+                        cmd => {
+                            error!("Unknown command {:?}", cmd);
+                            state_tx.send(State::ERROR).unwrap();
+                        }
+                    };
+                },
+                Err(_) => continue,
             }
-        };
+        }
+    });
+
+    loop {
+        thread::sleep(Duration::from_millis(1000));
+        mqtt_client.publish(
+            MQTT_RESPONSE_TOPIC,
+            QoS::ExactlyOnce,
+            false,
+            format!("SmartLock: {:?}", smart_lock.lock().unwrap().get_state()).as_bytes(),
+        ).unwrap();
     }
-}
-
-
-// Simulate the lock opening
-fn open_cmd(state_tx: &mut Sender<State>) {
-    state_tx.send(State::OPENING).unwrap();
-    thread::sleep(Duration::from_millis(1000));
-    state_tx.send(State::OPEN).unwrap();
-}
-
-// Simulate the lock closing
-fn close_cmd(state_tx: &mut Sender<State>) {
-    state_tx.send(State::CLOSING).unwrap();
-    thread::sleep(Duration::from_millis(1000));
-    state_tx.send(State::CLOSED).unwrap();
 }
 
 fn spawn_event_thread(mut mqtt_conn: EspMqttConnection, event_tx: Sender<String>) {

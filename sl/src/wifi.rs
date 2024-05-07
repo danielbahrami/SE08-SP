@@ -1,9 +1,10 @@
-use esp_idf_svc::eventloop::{EspEventLoop, System};
-use esp_idf_svc::hal::modem;
-use esp_idf_svc::hal::peripheral::Peripheral;
-use esp_idf_svc::nvs::{EspNvsPartition, NvsDefault};
-use esp_idf_svc::sys::EspError;
-use esp_idf_svc::wifi::{AuthMethod, BlockingWifi, ClientConfiguration, Configuration, EspWifi};
+use esp_idf_svc::{
+    eventloop::{EspEventLoop, System},
+    hal::{modem, peripheral::Peripheral},
+    nvs::{EspNvsPartition, NvsDefault},
+    wifi::{AuthMethod, BlockingWifi, ClientConfiguration, Configuration, EspWifi},
+    sys::EspError,
+};
 use log::info;
 
 pub fn setup_wifi(
