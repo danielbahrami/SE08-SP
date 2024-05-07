@@ -2,8 +2,8 @@ use esp_idf_svc::{
     eventloop::{EspEventLoop, System},
     hal::{modem, peripheral::Peripheral},
     nvs::{EspNvsPartition, NvsDefault},
-    wifi::{AuthMethod, BlockingWifi, ClientConfiguration, Configuration, EspWifi},
     sys::EspError,
+    wifi::{AuthMethod, BlockingWifi, ClientConfiguration, Configuration, EspWifi},
 };
 use log::info;
 
@@ -12,7 +12,7 @@ pub fn setup_wifi(
     password: &str,
     modem: impl Peripheral<P = modem::Modem> + 'static,
     event_loop: EspEventLoop<System>,
-    nvs: EspNvsPartition<NvsDefault>
+    nvs: EspNvsPartition<NvsDefault>,
 ) -> Result<BlockingWifi<EspWifi<'static>>, EspError> {
     let mut wifi = BlockingWifi::wrap(
         EspWifi::new(modem, event_loop.clone(), Some(nvs)).unwrap(),
