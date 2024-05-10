@@ -17,5 +17,3 @@
     - => OPENING => OPEN
 - close
     - => CLOSING => CLOSED
-- _
-    - => ERROR
