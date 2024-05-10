@@ -84,7 +84,6 @@ pub fn handle_communication(
                 }
                 cmd => {
                     error!("Unknown command: {:?}", cmd);
-                    state_tx.send(State::ERROR).unwrap();
                 }
             };
         }
