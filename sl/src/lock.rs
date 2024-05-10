@@ -81,19 +81,19 @@ impl SmartLock {
                                 blink = true;
                                 make_blue(&mut color);
                             }
-                            State::CLOSED => {
+                            State::LOCKED => {
                                 blink = false;
                                 make_red(&mut color);
                             }
-                            State::CLOSING => {
+                            State::LOCKING => {
                                 blink = false;
                                 make_yellow(&mut color);
                             }
-                            State::OPEN => {
+                            State::UNLOCKED => {
                                 blink = false;
                                 make_green(&mut color);
                             }
-                            State::OPENING => {
+                            State::UNLOCKING => {
                                 blink = false;
                                 make_yellow(&mut color);
                             }

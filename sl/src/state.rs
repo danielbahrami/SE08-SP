@@ -3,10 +3,10 @@ pub enum State {
     NONE,
     INITIALIZING,
     ERROR,
-    CLOSED,
-    CLOSING,
-    OPEN,
-    OPENING,
+    LOCKED,
+    LOCKING,
+    UNLOCKED,
+    UNLOCKING,
 }
 
 pub fn make_red(color: &mut [u32; 3]) {

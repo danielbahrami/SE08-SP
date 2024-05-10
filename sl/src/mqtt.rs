@@ -48,38 +48,38 @@ pub fn handle_communication(
         .unwrap();
 
     // Signal that the INITIALIZATION is done and the device is ready to receive commands
-    state_tx.send(State::CLOSED).unwrap();
+    state_tx.send(State::LOCKED).unwrap();
 
     // MQTT event thread
     thread::spawn(move || {
-        let mut lock_state = State::CLOSED; // Initialize lock state as closed
+        let mut lock_state = State::LOCKED; // Initialize lock state as closed
 
         for msg in event_rx {
             match msg.as_str() {
                 "open" => {
-                    if lock_state == State::CLOSED {
-                        state_tx.send(State::OPENING).unwrap();
+                    if lock_state == State::LOCKED {
+                        state_tx.send(State::UNLOCKING).unwrap();
                         thread::sleep(Duration::from_millis(3000));
-                        state_tx.send(State::OPEN).unwrap();
-                        lock_state = State::OPEN;
-                    } else if lock_state == State::OPEN {
+                        state_tx.send(State::UNLOCKED).unwrap();
+                        lock_state = State::UNLOCKED;
+                    } else if lock_state == State::UNLOCKED {
                         error!("Lock is already open");
                         state_tx.send(State::ERROR).unwrap();
                         thread::sleep(Duration::from_millis(3000));
-                        state_tx.send(State::OPEN).unwrap();
+                        state_tx.send(State::UNLOCKED).unwrap();
                     }
                 }
                 "close" => {
-                    if lock_state == State::OPEN {
-                        state_tx.send(State::CLOSING).unwrap();
+                    if lock_state == State::UNLOCKED {
+                        state_tx.send(State::LOCKING).unwrap();
                         thread::sleep(Duration::from_millis(3000));
-                        state_tx.send(State::CLOSED).unwrap();
-                        lock_state = State::CLOSED;
-                    } else if lock_state == State::CLOSED {
+                        state_tx.send(State::LOCKED).unwrap();
+                        lock_state = State::LOCKED;
+                    } else if lock_state == State::LOCKED {
                         error!("Lock is already closed");
                         state_tx.send(State::ERROR).unwrap();
                         thread::sleep(Duration::from_millis(3000));
-                        state_tx.send(State::CLOSED).unwrap();
+                        state_tx.send(State::LOCKED).unwrap();
                     }
                 }
                 cmd => {
