@@ -1,7 +1,7 @@
 [package]
 name = "smart-lock"
 version = "0.1.0"
-authors = ["Daniel Bahrami <daniel@bahrami.dk>"]
+authors = ["Daniel Bahrami <daniel@bahrami.dk>", "Marc Bertelsen <mlwellerb@gmail.com>"]
 edition = "2021"
 resolver = "2"
 rust-version = "1.71"
@@ -24,8 +24,8 @@ experimental = ["esp-idf-svc/experimental"]
 embassy = ["esp-idf-svc/embassy-sync", "esp-idf-svc/critical-section", "esp-idf-svc/embassy-time-driver"]
 
 [dependencies]
-log = { version = "0.4", default-features = false }
-esp-idf-svc = { version = "0.48", default-features = false }
+log = "0.4.21"
+esp-idf-svc = "0.48.1"
 
 [build-dependencies]
-embuild = "0.31.3"
+embuild = "0.31.4"
