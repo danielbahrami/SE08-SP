@@ -50,27 +50,45 @@ pub fn handle_communication(
     // Signal that the INITIALIZATION is done and the device is ready to receive commands
     state_tx.send(State::CLOSED).unwrap();
 
-    // MQTT event thread
-    thread::spawn(move || {
-        for msg in event_rx {
-            match msg.as_str() {
-                "open" => {
+   // MQTT event thread
+thread::spawn(move || {
+    let mut lock_state = State::CLOSED; // Initialize lock state as closed
+
+    for msg in event_rx {
+        match msg.as_str() {
+            "open" => {
+                if lock_state == State::CLOSED {
                     state_tx.send(State::OPENING).unwrap();
-                    thread::sleep(Duration::from_millis(1000));
+                    thread::sleep(Duration::from_millis(3000));
+                    state_tx.send(State::OPEN).unwrap();
+                    lock_state = State::OPEN;
+                } else if lock_state == State::OPEN {
+                    error!("Lock is already open");
+                    state_tx.send(State::ERROR).unwrap();
+                    thread::sleep(Duration::from_millis(3000));
                     state_tx.send(State::OPEN).unwrap();
                 }
-                "close" => {
+            }
+            "close" => {
+                if lock_state == State::OPEN {
                     state_tx.send(State::CLOSING).unwrap();
-                    thread::sleep(Duration::from_millis(1000));
+                    thread::sleep(Duration::from_millis(3000));
+                    state_tx.send(State::CLOSED).unwrap();
+                    lock_state = State::CLOSED;
+                } else if lock_state == State::CLOSED {
+                    error!("Lock is already closed");
+                    state_tx.send(State::ERROR).unwrap();
+                    thread::sleep(Duration::from_millis(3000));
                     state_tx.send(State::CLOSED).unwrap();
                 }
-                cmd => {
-                    error!("Unknown command {:?}", cmd);
-                    state_tx.send(State::ERROR).unwrap();
-                }
-            };
-        }
-    });
+            }
+            cmd => {
+                error!("Unknown command {:?}", cmd);
+                state_tx.send(State::ERROR).unwrap();
+            }
+        };
+    }
+});
 
     // parse heartbeat frequency or use 1000ms as default
     let heartbeat_freq = MQTT_HEARTBEAT_FREQUENCY_MS
