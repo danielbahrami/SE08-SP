@@ -78,7 +78,7 @@ impl SmartLock {
                         lock_binding.set_state(state);
                         match state {
                             State::INITIALIZING => {
-                                blink = true;
+                                blink = false;
                                 make_blue(&mut color);
                             }
                             State::LOCKED => {
