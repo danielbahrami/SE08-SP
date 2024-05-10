@@ -11,11 +11,7 @@ use esp_idf_svc::{
 use log::*;
 use std::sync::{mpsc, Arc, Mutex};
 
-// GREED = 32
-// RED = 33
-// BLUE = 25
-
-// WiFi
+// Wi-Fi
 const WIFI_SSID: &str = env!("WIFI_SSID");
 const WIFI_PASSWORD: &str = env!("WIFI_PASSWORD");
 
@@ -27,11 +23,7 @@ const MQTT_CLIENT_ID: &str = env!("MQTT_CLIENT_ID");
 const MQTT_HEARTBEAT_FREQUENCY_MS: &str = env!("MQTT_HEARTBEAT_FREQUENCY_MS");
 
 fn main() {
-    // It is necessary to call this function once. Otherwise some patches to the runtime
-    // implemented by esp-idf-sys might not link properly. See https://github.com/esp-rs/esp-idf-template/issues/71
     esp_idf_svc::sys::link_patches();
-
-    // Bind the log crate to the ESP Logging facilities
     esp_idf_svc::log::EspLogger::initialize_default();
 
     let (state_tx, state_rx) = mpsc::channel::<State>();
@@ -43,7 +35,7 @@ fn main() {
     let smart_lock = Arc::new(Mutex::new(SmartLock::new()));
     let smart_lock_arc = smart_lock.clone();
 
-    // Setup LEDs
+    // Setup LED
     let (red_pin, green_pin, blue_pin) = match SmartLock::setup_leds(
         peripherals.ledc.timer0,
         peripherals.ledc.channel0,
@@ -64,12 +56,12 @@ fn main() {
 
     state_tx.send(State::INITIALIZING).unwrap();
 
-    // Setup WiFi connection
+    // Setup Wi-Fi connection
     let _wifi = match wifi::setup_wifi(WIFI_SSID, WIFI_PASSWORD, peripherals.modem, event_loop, nvs)
     {
         Ok(wifi) => wifi,
         Err(e) => {
-            error!("Please check Wi-Fi ssid and password are correct\n{e}");
+            error!("Please check if Wi-Fi SSID and password are correct\n{e}");
             state_tx.send(State::ERROR).unwrap();
             return;
         }
@@ -79,7 +71,7 @@ fn main() {
     let (mqtt_client, mqtt_conn) = match mqtt::setup_mqtt(MQTT_BROKER, MQTT_CLIENT_ID) {
         Ok(values) => values,
         Err(e) => {
-            error!("Please check address to MQTT is correct\n{e}");
+            error!("Please check if address to MQTT broker is correct\n{e}");
             state_tx.send(State::ERROR).unwrap();
             return;
         }

@@ -9,7 +9,7 @@ use esp_idf_svc::{
     sys::EspError,
 };
 use log::info;
-use std::collections::HashMap;
+
 use std::sync::Mutex;
 use std::{
     sync::{mpsc::Receiver, Arc},

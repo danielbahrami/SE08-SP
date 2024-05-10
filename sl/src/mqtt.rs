@@ -56,44 +56,45 @@ pub fn handle_communication(
 
         for msg in event_rx {
             match msg.as_str() {
-                "open" => {
+                "unlock" => {
                     if lock_state == State::LOCKED {
                         state_tx.send(State::UNLOCKING).unwrap();
                         thread::sleep(Duration::from_millis(3000));
                         state_tx.send(State::UNLOCKED).unwrap();
                         lock_state = State::UNLOCKED;
                     } else if lock_state == State::UNLOCKED {
-                        error!("Lock is already open");
+                        error!("Smart Lock is already UNLOCKED");
                         state_tx.send(State::ERROR).unwrap();
                         thread::sleep(Duration::from_millis(3000));
                         state_tx.send(State::UNLOCKED).unwrap();
                     }
                 }
-                "close" => {
+                "lock" => {
                     if lock_state == State::UNLOCKED {
                         state_tx.send(State::LOCKING).unwrap();
                         thread::sleep(Duration::from_millis(3000));
                         state_tx.send(State::LOCKED).unwrap();
                         lock_state = State::LOCKED;
                     } else if lock_state == State::LOCKED {
-                        error!("Lock is already closed");
+                        error!("Smart Lock is already LOCKED");
                         state_tx.send(State::ERROR).unwrap();
                         thread::sleep(Duration::from_millis(3000));
                         state_tx.send(State::LOCKED).unwrap();
                     }
                 }
                 cmd => {
-                    error!("Unknown command {:?}", cmd);
+                    error!("Unknown command: {:?}", cmd);
                     state_tx.send(State::ERROR).unwrap();
                 }
             };
         }
     });
 
-    // parse heartbeat frequency or use 1000ms as default
+    // Parse heartbeat frequency or use 3000ms as default
     let heartbeat_freq = MQTT_HEARTBEAT_FREQUENCY_MS
         .parse::<u64>()
-        .unwrap_or_else(|_| 1000);
+        .unwrap_or_else(|_| 3000);
+
     // Heartbeat loop
     loop {
         thread::sleep(Duration::from_millis(heartbeat_freq));
@@ -103,7 +104,7 @@ pub fn handle_communication(
                 QoS::ExactlyOnce,
                 false,
                 format!(
-                    "SmartLock: {:?}, {:?}",
+                    "Smart Lock: {:?}, {:?}",
                     smart_lock.lock().unwrap().get_state(),
                     SystemTime::now()
                         .duration_since(SystemTime::UNIX_EPOCH)
