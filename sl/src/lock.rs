@@ -1,4 +1,4 @@
-use crate::state::{make_blue, make_green, make_orange, make_red, make_yellow, State};
+use crate::state::{make_blue, make_green, make_red, make_yellow, State};
 use esp_idf_svc::{
     hal::{
         gpio::OutputPin,
@@ -87,7 +87,7 @@ impl SmartLock {
                             }
                             State::CLOSING => {
                                 blink = false;
-                                make_orange(&mut color);
+                                make_yellow(&mut color);
                             }
                             State::OPEN => {
                                 blink = false;
