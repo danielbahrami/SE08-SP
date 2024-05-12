@@ -1,5 +1,4 @@
 use crate::lock::SmartLock;
-use crate::state::State;
 use crate::{MQTT_COMMAND_TOPIC, MQTT_HEARTBEAT_FREQUENCY_MS, MQTT_HEARTBEAT_TOPIC};
 use esp_idf_svc::{
     mqtt::client::{
@@ -11,12 +10,7 @@ use esp_idf_svc::{
 };
 use log::*;
 use std::sync::{Arc, Mutex};
-use std::time::SystemTime;
-use std::{
-    sync::mpsc::{self, Sender},
-    thread,
-    time::Duration,
-};
+use std::{sync::mpsc::Sender, thread, time::Duration};
 
 pub fn setup_mqtt(
     broker_addr: &str,
@@ -34,12 +28,9 @@ pub fn setup_mqtt(
 pub fn handle_communication(
     mut mqtt_client: EspMqttClient,
     mqtt_conn: EspMqttConnection,
-    state_tx: Sender<State>,
+    event_tx: Sender<String>,
     smart_lock: Arc<Mutex<SmartLock>>,
 ) {
-    // Channel for sending event commands out of the MQTT thread
-    let (event_tx, event_rx) = mpsc::channel::<String>();
-
     // Thread for handling different MQTT events
     spawn_event_thread(mqtt_conn, event_tx);
 
@@ -47,70 +38,15 @@ pub fn handle_communication(
         .subscribe(MQTT_COMMAND_TOPIC, QoS::ExactlyOnce)
         .unwrap();
 
-    // Signal that the INITIALIZATION is done and the device is ready to receive commands
-    state_tx.send(State::LOCKED).unwrap();
-
-    // MQTT event thread
-    thread::spawn(move || {
-        let mut lock_state = State::LOCKED; // Initialize lock state as closed
-
-        for msg in event_rx {
-            match msg.as_str() {
-                "unlock" => {
-                    if lock_state == State::LOCKED {
-                        state_tx.send(State::UNLOCKING).unwrap();
-                        thread::sleep(Duration::from_millis(3000));
-                        state_tx.send(State::UNLOCKED).unwrap();
-                        lock_state = State::UNLOCKED;
-                    } else if lock_state == State::UNLOCKED {
-                        error!("Smart Lock is already UNLOCKED");
-                        state_tx.send(State::ERROR).unwrap();
-                        thread::sleep(Duration::from_millis(3000));
-                        state_tx.send(State::UNLOCKED).unwrap();
-                    }
-                }
-                "lock" => {
-                    if lock_state == State::UNLOCKED {
-                        state_tx.send(State::LOCKING).unwrap();
-                        thread::sleep(Duration::from_millis(3000));
-                        state_tx.send(State::LOCKED).unwrap();
-                        lock_state = State::LOCKED;
-                    } else if lock_state == State::LOCKED {
-                        error!("Smart Lock is already LOCKED");
-                        state_tx.send(State::ERROR).unwrap();
-                        thread::sleep(Duration::from_millis(3000));
-                        state_tx.send(State::LOCKED).unwrap();
-                    }
-                }
-                cmd => {
-                    error!("Unknown command: {:?}", cmd);
-                }
-            };
-        }
-    });
-
-    // Parse heartbeat frequency or use 3000ms as default
-    let heartbeat_freq = MQTT_HEARTBEAT_FREQUENCY_MS
-        .parse::<u64>()
-        .unwrap_or_else(|_| 3000);
-
     // Heartbeat loop
     loop {
-        thread::sleep(Duration::from_millis(heartbeat_freq));
+        thread::sleep(Duration::from_millis(MQTT_HEARTBEAT_FREQUENCY_MS as u64));
         mqtt_client
             .publish(
                 MQTT_HEARTBEAT_TOPIC,
                 QoS::ExactlyOnce,
                 false,
-                format!(
-                    "Smart Lock: {:?}, {:?}",
-                    smart_lock.lock().unwrap().get_state(),
-                    SystemTime::now()
-                        .duration_since(SystemTime::UNIX_EPOCH)
-                        .unwrap()
-                        .as_millis(),
-                )
-                .as_bytes(),
+                format!("Smart Lock: {:?}", smart_lock.lock().unwrap().get_state(),).as_bytes(),
             )
             .unwrap();
     }
@@ -125,6 +61,7 @@ fn spawn_event_thread(mut mqtt_conn: EspMqttConnection, event_tx: Sender<String>
                 }
                 Subscribed(_) => {
                     info!("Subscribed");
+                    event_tx.send("ready".to_string()).unwrap(); // Signal "ready" to smart lock
                 }
                 Published(_) => {
                     info!("Published");
