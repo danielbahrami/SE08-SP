@@ -13,7 +13,7 @@
 - Green = UNLOCKED
 
 ## Commands
-- open
-    - => OPENING => OPEN
-- close
-    - => CLOSING => CLOSED
+- unlock
+    - => UNLOCKING => UNLOCKED
+- lock
+    - => LOCKING => LOCKED
