@@ -20,7 +20,7 @@ const MQTT_BROKER: &str = env!("MQTT_BROKER");
 const MQTT_COMMAND_TOPIC: &str = env!("MQTT_COMMAND_TOPIC");
 const MQTT_HEARTBEAT_TOPIC: &str = env!("MQTT_HEARTBEAT_TOPIC");
 const MQTT_CLIENT_ID: &str = env!("MQTT_CLIENT_ID");
-const MQTT_HEARTBEAT_FREQUENCY_MS: &str = env!("MQTT_HEARTBEAT_FREQUENCY_MS");
+const MQTT_HEARTBEAT_FREQUENCY_MS: u32 = 2000;
 
 fn main() {
     esp_idf_svc::sys::link_patches();

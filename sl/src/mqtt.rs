@@ -38,14 +38,9 @@ pub fn handle_communication(
         .subscribe(MQTT_COMMAND_TOPIC, QoS::ExactlyOnce)
         .unwrap();
 
-    // Parse heartbeat frequency or use 3000ms as default
-    let heartbeat_freq = MQTT_HEARTBEAT_FREQUENCY_MS
-        .parse::<u64>()
-        .unwrap_or_else(|_| 3000);
-
     // Heartbeat loop
     loop {
-        thread::sleep(Duration::from_millis(heartbeat_freq));
+        thread::sleep(Duration::from_millis(MQTT_HEARTBEAT_FREQUENCY_MS as u64));
         mqtt_client
             .publish(
                 MQTT_HEARTBEAT_TOPIC,
