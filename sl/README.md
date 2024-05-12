@@ -6,11 +6,11 @@
 - Blue = GPIO33
 
 ## LED Indicaton
-- Blue = INITIALIZING (Connecting to Wi-Fi and MQTT)
-- Red = LOCKED
+- Blue = INITIALIZING
+- Green = LOCKED
+- Red = UNLOCKED
     - Blinking = ERROR
 - Yellow = LOCKING/UNLOCKING
-- Green = UNLOCKED
 
 ## Commands
 - unlock

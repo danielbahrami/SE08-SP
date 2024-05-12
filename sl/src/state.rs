@@ -15,21 +15,21 @@ impl State {
     pub fn get_color(self, color: &mut [u32; 3]) {
         match self {
             State::NONE => {
-                color[0] = 255;
-                color[1] = 255;
-                color[2] = 255;
+                color[0] = 0;
+                color[1] = 0;
+                color[2] = 0;
             }
             State::INITIALIZING => {
                 color[0] = 0;
                 color[1] = 0;
                 color[2] = 255;
             }
-            State::ERROR => {
-                color[0] = 255;
-                color[1] = 0;
+            State::LOCKED => {
+                color[0] = 0;
+                color[1] = 255;
                 color[2] = 0;
             }
-            State::LOCKED => {
+            State::UNLOCKED => {
                 color[0] = 255;
                 color[1] = 0;
                 color[2] = 0;
@@ -39,14 +39,14 @@ impl State {
                 color[1] = 255;
                 color[2] = 0;
             }
-            State::UNLOCKED => {
-                color[0] = 0;
-                color[1] = 255;
-                color[2] = 0;
-            }
             State::UNLOCKING => {
                 color[0] = 255;
                 color[1] = 255;
+                color[2] = 0;
+            }
+            State::ERROR => {
+                color[0] = 255;
+                color[1] = 0;
                 color[2] = 0;
             }
         }

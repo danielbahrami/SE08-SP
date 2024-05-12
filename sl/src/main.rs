@@ -35,6 +35,7 @@ fn main() {
 
     let mut smart_lock = SmartLock::new();
     smart_lock.link_channel(event_tx.clone().into());
+
     // Configure the smart lock with states and transitions
     // Sim transitions, will simulate states which trigger a process
     smart_lock
