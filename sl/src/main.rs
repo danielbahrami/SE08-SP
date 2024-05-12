@@ -42,13 +42,13 @@ fn main() {
         .add_transition(INITIALIZING, "ready", LOCKED)
         .add_transition(INITIALIZING, "err-wifi", ERROR)
         .add_transition(INITIALIZING, "err-mqtt", ERROR)
-        .add_sim_transition(LOCKED, "unlock", UNLOCKING, 1500, "unlock-success")
+        .add_sim_transition(LOCKED, "unlock", UNLOCKING, 2000, "unlock-success")
         .add_transition(UNLOCKING, "unlock-success", UNLOCKED)
         .add_transition(UNLOCKING, "unlock-failure", ERROR)
-        .add_sim_transition(UNLOCKED, "lock", LOCKING, 1500, "lock-success")
+        .add_sim_transition(UNLOCKED, "lock", LOCKING, 2000, "lock-success")
         .add_transition(LOCKING, "lock-success", LOCKED)
         .add_transition(LOCKING, "lock-failure", ERROR)
-        .add_sim_transition(ERROR, "reset", LOCKING, 1500, "lock-success");
+        .add_sim_transition(ERROR, "reset", LOCKING, 2000, "lock-success");
 
     // Wrap smart lock for access between threads
     let smart_lock_ = Arc::new(Mutex::new(smart_lock));
