@@ -4,7 +4,7 @@ mod state;
 mod wifi;
 
 use crate::lock::SmartLock;
-use crate::state::State;
+use crate::state::State::*;
 use esp_idf_svc::{
     eventloop::EspSystemEventLoop, hal::peripherals::Peripherals, nvs::EspDefaultNvsPartition,
 };
@@ -26,17 +26,35 @@ fn main() {
     esp_idf_svc::sys::link_patches();
     esp_idf_svc::log::EspLogger::initialize_default();
 
-    let (state_tx, state_rx) = mpsc::channel::<State>();
+    // Channel for sending events to smart lock
+    let (event_tx, event_rx) = mpsc::channel::<String>();
 
     let peripherals = Peripherals::take().unwrap();
     let event_loop = EspSystemEventLoop::take().unwrap();
     let nvs = EspDefaultNvsPartition::take().unwrap();
 
-    let smart_lock = Arc::new(Mutex::new(SmartLock::new()));
-    let smart_lock_arc = smart_lock.clone();
+    let mut smart_lock = SmartLock::new();
+    smart_lock.link_channel(event_tx.clone().into());
+    // Configure the smart lock with states and transitions
+    // Sim transitions, will simulate states which trigger a process
+    smart_lock
+        .add_transition(NONE, "init", INITIALIZING)
+        .add_transition(INITIALIZING, "ready", LOCKED)
+        .add_transition(INITIALIZING, "err-wifi", ERROR)
+        .add_transition(INITIALIZING, "err-mqtt", ERROR)
+        .add_sim_transition(LOCKED, "unlock", UNLOCKING, 1500, "unlock-success")
+        .add_transition(UNLOCKING, "unlock-success", UNLOCKED)
+        .add_transition(UNLOCKING, "unlock-failure", ERROR)
+        .add_sim_transition(UNLOCKED, "lock", LOCKING, 1500, "lock-success")
+        .add_transition(LOCKING, "lock-success", LOCKED)
+        .add_transition(LOCKING, "lock-failure", ERROR)
+        .add_sim_transition(ERROR, "reset", LOCKING, 1500, "lock-success");
+
+    // Wrap smart lock for access between threads
+    let smart_lock_ = Arc::new(Mutex::new(smart_lock));
 
     // Setup LED
-    let (red_pin, green_pin, blue_pin) = match SmartLock::setup_leds(
+    let (red_pin, green_pin, blue_pin) = match SmartLock::setup_led(
         peripherals.ledc.timer0,
         peripherals.ledc.channel0,
         peripherals.ledc.channel1,
@@ -52,9 +70,11 @@ fn main() {
         }
     };
 
-    SmartLock::run(smart_lock, state_rx, red_pin, green_pin, blue_pin);
+    // Run the smart lock. This will run the LED and listen for events to cause transitions
+    SmartLock::run(smart_lock_.clone(), event_rx, red_pin, green_pin, blue_pin);
 
-    state_tx.send(State::INITIALIZING).unwrap();
+    // Notify the smart lock that initiation has begun
+    event_tx.send("init".to_string()).unwrap();
 
     // Setup Wi-Fi connection
     let _wifi = match wifi::setup_wifi(WIFI_SSID, WIFI_PASSWORD, peripherals.modem, event_loop, nvs)
@@ -62,7 +82,7 @@ fn main() {
         Ok(wifi) => wifi,
         Err(e) => {
             error!("Please check if Wi-Fi SSID and password are correct\n{e}");
-            state_tx.send(State::ERROR).unwrap();
+            event_tx.send("err-wifi".to_string()).unwrap();
             return;
         }
     };
@@ -72,11 +92,11 @@ fn main() {
         Ok(values) => values,
         Err(e) => {
             error!("Please check if address to MQTT broker is correct\n{e}");
-            state_tx.send(State::ERROR).unwrap();
+            event_tx.send("err-mqtt".to_string()).unwrap();
             return;
         }
     };
 
     // Run and handle MQTT subscriptions and publications
-    mqtt::handle_communication(mqtt_client, mqtt_conn, state_tx, smart_lock_arc);
+    mqtt::handle_communication(mqtt_client, mqtt_conn, event_tx, smart_lock_);
 }
