@@ -54,7 +54,7 @@ impl SmartLock {
         self
     }
 
-    /// Add a transitions that simulates a second event after some delay
+    /// Add a transition that simulates a second event after some delay
     pub fn add_sim_transition(
         &mut self,
         given_state: State,
@@ -84,11 +84,6 @@ impl SmartLock {
 
     /// Try to find a fitting state transition or sim transition
     fn try_transition(&mut self, event: String) {
-        // Find the appropriate StateNode
-        // |-> Look for normal transition in StateNode
-        // |--> Set state from transition and return
-        // |-> Look for sim transition in StateNode
-        // |--> Set state from sim transition and spawn sim thread
         match self.transitions.get(&self.state) {
             None => return,
             Some(node) => match node.get_next_state(&event) {
@@ -97,7 +92,7 @@ impl SmartLock {
                     Some(sim) => {
                         let (intermediate_state, sim_delay, sim_event) = sim.clone();
                         self.set_state(intermediate_state, event.into());
-                        // Simulate a delayed input, such as the locking mechanism
+                        // Simulate a delayed input such as the locking mechanism
                         Self::spawn_sim_thread(sim_delay, sim_event, self.sim_tx.clone());
                     }
                 },
@@ -115,7 +110,7 @@ impl SmartLock {
         });
     }
 
-    /// Link channel Sender. Used for sim threads
+    /// Link channel sender
     pub fn link_channel(&mut self, tx: Option<Sender<String>>) {
         self.sim_tx = tx;
     }
@@ -168,7 +163,7 @@ impl SmartLock {
         let mut color: [u32; 3] = [0, 0, 0];
         let mut blink = false;
         thread::spawn(move || loop {
-            // Try to get any updates from MQTT or sim threads
+            // Try to get updates from MQTT or sim threads
             match event_rx.try_recv() {
                 Ok(event) => {
                     let mut lock_binding = smart_lock.lock().unwrap();

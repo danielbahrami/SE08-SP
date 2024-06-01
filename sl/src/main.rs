@@ -37,7 +37,7 @@ fn main() {
     smart_lock.link_channel(event_tx.clone().into());
 
     // Configure the smart lock with states and transitions
-    // Sim transitions, will simulate states which trigger a process
+    // Sim transitions will simulate states which trigger a process
     smart_lock
         .add_transition(NONE, "init", INITIALIZING)
         .add_transition(INITIALIZING, "ready", LOCKED)
